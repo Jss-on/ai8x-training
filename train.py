@@ -263,7 +263,7 @@ def main():
     dimensions = selected_source['input']
     if len(dimensions) == 2:
         dimensions += (1, )
-    args.dimensions = dimensions
+    args.dimensions = dimensions #(128,128,1)
 
     args.datasets_fn = selected_source['loader']
     args.collate_fn = selected_source.get('collate')  # .get returns None if key does not exist
