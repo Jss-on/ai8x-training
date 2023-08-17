@@ -87,13 +87,7 @@ class KWS:
     url_librispeech = 'http://us.openslr.org/resources/12/dev-clean.tar.gz'
     fs = 16000
 
-    class_dict = {'backward': 0, 'bed': 1, 'bird': 2, 'cat': 3, 'dog': 4, 'down': 5,
-                  'eight': 6, 'five': 7, 'follow': 8, 'forward': 9, 'four': 10, 'go': 11,
-                  'happy': 12, 'house': 13, 'learn': 14, 'left': 15, 'librispeech': 16,
-                  'marvin': 17, 'nine': 18, 'no': 19, 'off': 20, 'on': 21, 'one': 22,
-                  'right': 23, 'seven': 24, 'sheila': 25, 'six': 26, 'stop': 27,
-                  'three': 28, 'tree': 29, 'two': 30, 'up': 31, 'visual': 32, 'wow': 33,
-                  'yes': 34, 'zero': 35}
+    class_dict = {'FULL_LEAK': 0, 'MEDIUM_LEAK': 1, 'NORMAL': 2, 'SHUTTLE_ABN': 3, 'SHUTTLE_NORM': 4}
 
     def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
                  augmentation=None, download=False, save_unquantized=False, custom_dataset=False):
@@ -105,6 +99,8 @@ class KWS:
         self.transform = transform
         self.save_unquantized = save_unquantized   #dataset2.pt
         self.noise = np.empty(shape=[0, 0])
+        # self.raw_folder = "/content/ai8x-training/data/raw"
+        # self.processed_folder = "/content/ai8x-training/data/processed"
 
         self.__parse_quantization(quantization_scheme)
         self.__parse_augmentation(augmentation)
@@ -131,7 +127,7 @@ class KWS:
     def raw_folder(self):
         """Folder for the raw data.
         """
-        return os.path.join(self.root, self.__class__.__name__, 'raw')
+        return os.path.join(self.root, 'raw')
 
     @property
     def librispeech_folder(self):
@@ -149,7 +145,7 @@ class KWS:
     def processed_folder(self):
         """Folder for the processed data.
         """
-        return os.path.join(self.root, self.__class__.__name__, 'processed')
+        return os.path.join(self.root, 'processed')
 
     def __parse_quantization(self, quantization_scheme):
         #quantization_scheme = {'compand': False, 'mu': 10, bits = 8}
@@ -193,6 +189,9 @@ class KWS:
     
     def _custom_dataset(self):
         # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
+        
+        if self.__check_exists():
+          return
         self.__resample_convert_wav_custom(folder_in=self.raw_folder)
         self.__gen_datasets()
 
@@ -472,10 +471,10 @@ class KWS:
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
-        num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        print(f'Class UNKNOWN: {num_elems} elements')
-        self.targets[(self.targets < initial_new_class_label)] = new_class_label
-        self.targets -= initial_new_class_label
+        # num_elems = (self.targets < initial_new_class_label).cpu().sum()
+        # print(f'Class UNKNOWN: {num_elems} elements')
+        # self.targets[(self.targets < initial_new_class_label)] = new_class_label
+        # self.targets -= initial_new_class_label
 
     def __len__(self):
         return len(self.data)
@@ -577,6 +576,7 @@ class KWS:
     def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
         print('Generating dataset from raw data samples for the first time. ')
         print('This process will take significant time (~60 minutes)...')
+       
         with warnings.catch_warnings():
             warnings.simplefilter('error')
 
@@ -719,6 +719,8 @@ def SE_get_datasets(data, load_train=True, load_test=True, num_classes=5): #trai
         ai8x.normalize(args=args)
     ])
 
+    print("Jession :",data_dir)
+
     name_to_match = 'SE'
     # Get the dataset by name
     dataset = next((e for e in datasets if e['name'] == name_to_match), None)
@@ -762,8 +764,8 @@ datasets = [
     {
         'name': 'SE',  # 6 keywords
         'input': (128, 128),
-        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'NORMAL', 'SHUTTLE_ABN', 'SHUTTLE_NORM',"UNKNOWN"),
-        'weight': (1, 1, 0.6, 1, 1, 1),
+        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'NORMAL', 'SHUTTLE_ABN', 'SHUTTLE_NORM'),
+        'weight': (1, 1, 0.6, 1, 1),
         'loader': SE_get_datasets,
     }    
 ]
