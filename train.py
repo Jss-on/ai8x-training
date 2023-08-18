@@ -379,7 +379,7 @@ def main():
             if 'weight' in selected_source:
                 criterion = nn.CrossEntropyLoss(
                     torch.tensor(selected_source['weight'], dtype=torch.float)
-                ).to(args.device)
+                ).to(args.device) #21
             else:
                 criterion = nn.CrossEntropyLoss().to(args.device)
         else:
