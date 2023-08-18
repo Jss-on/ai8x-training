@@ -801,6 +801,10 @@ def train(train_loader, model, criterion, optimizer, epoch,
                 # Measure accuracy and record loss
                 loss = earlyexit_loss(output, target, criterion, args)
 
+        """
+        train(train_loader, model, criterion, optimizer, epoch, compression_scheduler,
+                  loggers=all_loggers, args=args)
+        """
         # Record loss
         losses[OBJECTIVE_LOSS_KEY].add(loss.item())
 

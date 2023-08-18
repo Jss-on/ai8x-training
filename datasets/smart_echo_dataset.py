@@ -87,7 +87,7 @@ class KWS:
     url_librispeech = 'http://us.openslr.org/resources/12/dev-clean.tar.gz'
     fs = 16000
 
-    class_dict = {'FULL_LEAK': 0, 'MEDIUM_LEAK': 1, 'NORMAL': 2, 'SHUTTLE_ABN': 3, 'SHUTTLE_NORM': 4}
+    class_dict = {'FULL_LEAK': 0, 'MEDIUM_LEAK': 1, 'NORMAL': 2, 'SHUTTLE_ABN': 3, 'SHUTTLE_NORM': 4, "UNKNOWN":5}
 
     def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
                  augmentation=None, download=False, save_unquantized=False, custom_dataset=False):
@@ -471,10 +471,10 @@ class KWS:
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
-        # num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        # print(f'Class UNKNOWN: {num_elems} elements')
-        # self.targets[(self.targets < initial_new_class_label)] = new_class_label
-        # self.targets -= initial_new_class_label
+        num_elems = (self.targets < initial_new_class_label).cpu().sum()
+        print(f'Class UNKNOWN: {num_elems} elements')
+        self.targets[(self.targets < initial_new_class_label)] = new_class_label
+        self.targets -= initial_new_class_label
 
     def __len__(self):
         return len(self.data)
@@ -694,7 +694,7 @@ class KWS_20(KWS):
 
 
 
-def SE_get_datasets(data, load_train=True, load_test=True, num_classes=5): #train_dataset, test_dataset = datasets_fn(data_dir, load_train=not test_only, load_test=True)
+def SE_get_datasets(data, load_train=True, load_test=True, num_classes=6): #train_dataset, test_dataset = datasets_fn(data_dir, load_train=not test_only, load_test=True)
     #Load_train = True and Load_test = True
     """
     Load the folded 1D version of SpeechCom dataset
@@ -764,8 +764,8 @@ datasets = [
     {
         'name': 'SE',  # 6 keywords
         'input': (128, 128),
-        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'NORMAL', 'SHUTTLE_ABN', 'SHUTTLE_NORM'),
-        'weight': (1, 1, 0.6, 1, 1),
+        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'NORMAL', 'SHUTTLE_ABN', 'SHUTTLE_NORM', 'UNKNOWN'),
+        'weight': (1, 1, 1, 1, 1,0.6),
         'loader': SE_get_datasets,
     }    
 ]

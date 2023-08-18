@@ -96,6 +96,6 @@ models = [
     {
         'name': 'smart_echo_net',
         'min_input': 1,
-        'dim': 2,
+        'dim': 1,
     },
 ]
