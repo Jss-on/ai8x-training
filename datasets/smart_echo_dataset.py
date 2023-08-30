@@ -762,10 +762,10 @@ def SE_get_datasets(data, load_train=True, load_test=True, num_classes=6): #trai
 
 datasets = [
     {
-        'name': 'SE',  # 6 keywords
+        'name': 'SE',  # 2 keywords
         'input': (128, 128),
-        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'NORMAL', 'UNKNOWN'),
-        'weight': (1, 1, 1, 0.6),
+        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'UNKNOWN'),
+        'weight': (1, 1, 0.6),
         'loader': SE_get_datasets,
     }    
 ]
