@@ -128,6 +128,13 @@ class KWS:
         """
         return os.path.join(self.root, 'raw')
 
+     @property
+    def tempRaw_folder(self):
+        """Folder for the raw data.
+        """
+        return os.path.join(self.root, 'tempRaw')
+
+ 
     @property
     def librispeech_folder(self):
         """Folder for the librispeech data.
