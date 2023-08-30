@@ -80,7 +80,7 @@ class KWS:
 
         self.data, self.targets, self.data_type = torch.load(os.path.join(
             self.processed_folder, self.data_file))
-
+        
         print(f'\nProcessing {self.d_type}...')
         self.__filter_dtype()
         self.__filter_classes()

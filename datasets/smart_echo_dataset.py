@@ -118,6 +118,7 @@ class KWS:
         self.data, self.targets, self.data_type = torch.load(os.path.join(
             self.processed_folder, self.data_file))
 
+        # print("Targets: ",set(self.targets))
         print(f'\nProcessing {self.d_type}...')
         self.__filter_dtype()
         self.__filter_classes()
@@ -128,13 +129,12 @@ class KWS:
         """
         return os.path.join(self.root, 'raw')
 
-     @property
+    @property
     def tempRaw_folder(self):
         """Folder for the raw data.
         """
         return os.path.join(self.root, 'tempRaw')
 
- 
     @property
     def librispeech_folder(self):
         """Folder for the librispeech data.
@@ -198,8 +198,8 @@ class KWS:
         
         if self.__check_exists():
           return
-        # self.__resample_convert_wav_custom(folder_in=self.raw_folder)
-        self.__resample_convert_wav(folder_in=self.tempRaw_folder, folder_out=self.raw_folder)
+        self.__resample_convert_wav_custom(folder_in=self.raw_folder)
+        # self.__resample_convert_wav(folder_in=self.tempRaw_folder, folder_out=self.raw_folder)
         self.__gen_datasets()
 
     def __resample_convert_wav_custom(self, folder_in, sr=16000, ext='.wav'):
@@ -467,9 +467,9 @@ class KWS:
         del self.data_type
 
     def __filter_classes(self):
-        initial_new_class_label = len(self.class_dict)
+        initial_new_class_label = len(self.class_dict) #5
         new_class_label = initial_new_class_label
-        for c in self.classes:
+        for c in self.classes: 
             if c not in self.class_dict:
                 print(f'Class {c} not found in data')
                 return
@@ -478,6 +478,7 @@ class KWS:
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
+        print("Jession")
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
         print(f'Class UNKNOWN: {num_elems} elements')
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
@@ -701,7 +702,7 @@ class KWS_20(KWS):
 
 
 
-def SE_get_datasets(data, load_train=True, load_test=True, num_classes=6): #train_dataset, test_dataset = datasets_fn(data_dir, load_train=not test_only, load_test=True)
+def SE_get_datasets(data, load_train=True, load_test=True, num_classes=2): #train_dataset, test_dataset = datasets_fn(data_dir, load_train=not test_only, load_test=True)
     #Load_train = True and Load_test = True
     """
     Load the folded 1D version of SpeechCom dataset
@@ -726,18 +727,13 @@ def SE_get_datasets(data, load_train=True, load_test=True, num_classes=6): #trai
         ai8x.normalize(args=args)
     ])
 
-    print("Jession :",data_dir)
-
-    name_to_match = 'SE'
-    # Get the dataset by name
-    dataset = next((e for e in datasets if e['name'] == name_to_match), None)
-    # Check if a matching dataset was found
-    if dataset:
-        classes = tuple(dataset['output'])
-    
+    if num_classes in (2, 20):
+        classes = next((e for _, e in enumerate(datasets)
+                        if len(e['output']) - 1 == num_classes))['output'][:-1]
     else:
-        print(f"No dataset found with the name {name_to_match}")
-        # Handle the error as needed         
+        raise ValueError(f'Unsupported num_classes {num_classes}')
+    
+             
 
     augmentation = {'aug_num': 2, 'shift': {'min': -0.15, 'max': 0.15},
                     'noise_var': {'min': 0, 'max': 1.0}}
