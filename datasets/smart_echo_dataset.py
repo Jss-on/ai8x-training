@@ -87,7 +87,7 @@ class KWS:
     url_librispeech = 'http://us.openslr.org/resources/12/dev-clean.tar.gz'
     fs = 16000
 
-    class_dict = {'FULL_LEAK': 0, 'MEDIUM_LEAK': 1, 'NORMAL': 2, 'SHUTTLE_ABN': 3, 'SHUTTLE_NORM': 4, "UNKNOWN":5}
+    class_dict = {'FULL_LEAK': 0, 'MEDIUM_LEAK': 1, 'NORMAL': 2, 'SHUTTLE_ABN': 3, 'SHUTTLE_NORM': 4}
 
     def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
                  augmentation=None, download=False, save_unquantized=False, custom_dataset=False):
@@ -99,8 +99,7 @@ class KWS:
         self.transform = transform
         self.save_unquantized = save_unquantized   #dataset2.pt
         self.noise = np.empty(shape=[0, 0])
-        # self.raw_folder = "/content/ai8x-training/data/raw"
-        # self.processed_folder = "/content/ai8x-training/data/processed"
+        
 
         self.__parse_quantization(quantization_scheme)
         self.__parse_augmentation(augmentation)
@@ -192,7 +191,8 @@ class KWS:
         
         if self.__check_exists():
           return
-        self.__resample_convert_wav_custom(folder_in=self.raw_folder)
+        # self.__resample_convert_wav_custom(folder_in=self.raw_folder)
+        self.__resample_convert_wav(folder_in=self.tempRaw_folder, folder_out=self.raw_folder)
         self.__gen_datasets()
 
     def __resample_convert_wav_custom(self, folder_in, sr=16000, ext='.wav'):
@@ -374,7 +374,7 @@ class KWS:
         print(f"Extracting {archive} to {extract_root}")
         self.__extract_archive(archive, extract_root, remove_finished)
 
-    def __resample_convert_wav(self, folder_in, folder_out, sr=16000, ext='.flac'):
+    def __resample_convert_wav(self, folder_in, folder_out, sr=16000, ext='.wav'):
 
         # # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
         # self.__resample_convert_wav(folder_in=self.librispeech_folder,
@@ -764,8 +764,8 @@ datasets = [
     {
         'name': 'SE',  # 6 keywords
         'input': (128, 128),
-        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'NORMAL', 'SHUTTLE_ABN', 'SHUTTLE_NORM', 'UNKNOWN'),
-        'weight': (1, 1, 1, 1, 1,0.6),
+        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'NORMAL', 'UNKNOWN'),
+        'weight': (1, 1, 1, 0.6),
         'loader': SE_get_datasets,
     }    
 ]
