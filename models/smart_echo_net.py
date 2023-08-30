@@ -22,48 +22,51 @@ class SMART_ECHO_NET(nn.Module):
 
     # num_classes = n keywords + 1 unknown
     def __init__(
-            self,
-            num_classes=5,
-            num_channels=128,
-            dimensions=(128, 1),  # pylint: disable=unused-argument
-            fc_inputs=7,
-            bias=False,
-            **kwargs
+        self,
+        num_classes=3,
+        num_channels=128,
+        dimensions=(128, 1),  # pylint: disable=unused-argument
+        fc_inputs=7,
+        bias=False,
+        **kwargs,
     ):
         super().__init__()
 
-        self.voice_conv1 = ai8x.FusedConv1dReLU(num_channels, 100, 1, stride=1, padding=0,
-                                                bias=bias, **kwargs)
+        #
+        self.voice_conv1 = ai8x.FusedConv1dReLU(
+            num_channels, 100, 1, stride=1, padding=0, bias=bias, **kwargs
+        )
 
-        self.voice_conv2 = ai8x.FusedConv1dReLU(100, 100, 1, stride=1, padding=0,
-                                                bias=bias, **kwargs)
+        self.voice_conv2 = ai8x.FusedConv1dReLU(
+            100, 100, 1, stride=1, padding=0, bias=bias, **kwargs
+        )
 
-        self.voice_conv3 = ai8x.FusedConv1dReLU(100, 50, 1, stride=1, padding=0,
-                                                bias=bias, **kwargs)
+        self.voice_conv3 = ai8x.FusedConv1dReLU(
+            100, 50, 1, stride=1, padding=0, bias=bias, **kwargs
+        )
 
-        self.voice_conv4 = ai8x.FusedConv1dReLU(50, 16, 1, stride=1, padding=0,
-                                                bias=bias, **kwargs)
+        self.voice_conv4 = ai8x.FusedConv1dReLU(
+            50, 16, 1, stride=1, padding=0, bias=bias, **kwargs
+        )
 
-        self.kws_conv1 = ai8x.FusedConv2dReLU(16, 32, 3, stride=1, padding=1,
-                                              bias=bias, **kwargs)
+        self.kws_conv1 = ai8x.FusedConv2dReLU(16, 32, 3, stride=1, padding=1, bias=bias, **kwargs)
 
-        self.kws_conv2 = ai8x.FusedConv2dReLU(32, 64, 3, stride=1, padding=1,
-                                              bias=bias, **kwargs)
+        self.kws_conv2 = ai8x.FusedConv2dReLU(32, 64, 3, stride=1, padding=1, bias=bias, **kwargs)
 
-        self.kws_conv3 = ai8x.FusedConv2dReLU(64, 64, 3, stride=1, padding=1,
-                                              bias=bias, **kwargs)
+        self.kws_conv3 = ai8x.FusedConv2dReLU(64, 64, 3, stride=1, padding=1, bias=bias, **kwargs)
 
-        self.kws_conv4 = ai8x.FusedConv2dReLU(64, 30, 3, stride=1, padding=1,
-                                              bias=bias, **kwargs)
+        self.kws_conv4 = ai8x.FusedConv2dReLU(64, 30, 3, stride=1, padding=1, bias=bias, **kwargs)
 
-        self.kws_conv5 = ai8x.FusedConv2dReLU(30, fc_inputs, 3, stride=1, padding=1,
-                                              bias=bias, **kwargs)
+        self.kws_conv5 = ai8x.FusedConv2dReLU(
+            30, fc_inputs, 3, stride=1, padding=1, bias=bias, **kwargs
+        )
 
-        self.fc = ai8x.Linear(fc_inputs * 128, num_classes, bias=bias, wide=True, **kwargs)
+        self.fc1 = ai8x.Linear(fc_inputs * 128, num_classes * 256, bias=bias, wide=True, **kwargs)
+        self.fc2 = ai8x.Linear(num_classes * 256, num_classes, bias=bias, wide=True, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
 
     def forward(self, x):  # pylint: disable=arguments-differ
         """Forward prop"""
@@ -79,7 +82,8 @@ class SMART_ECHO_NET(nn.Module):
         x = self.kws_conv4(x)
         x = self.kws_conv5(x)
         x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        x = self.fc1(x)
+        x = self.fc2(x)
 
         return x
 
@@ -94,8 +98,8 @@ def smart_echo_net(pretrained=False, **kwargs):
 
 models = [
     {
-        'name': 'smart_echo_net',
-        'min_input': 1,
-        'dim': 1,
+        "name": "smart_echo_net",
+        "min_input": 1,
+        "dim": 1,
     },
 ]
