@@ -66,34 +66,11 @@ class KWS:
 
     """
 
-    """
-    KWS(root=data_dir, classes=classes, d_type='train',
-                            transform=transform, t_type='keyword',
-                            quantization_scheme=quantization_scheme,
-                            augmentation=augmentation, download=True)
-
-    data_dir = ./data
-    classes = ('FULL_LEAK', 'MEDIUM_LEAK', 'NORMAL', 'SHUTTLE_ABN', 'SHUTTLE_NORM')
-    transform = img.sub(0.5).mul(256.).round().clamp(min=-128, max=127).div(128.)
-       
-    augmentation = {'aug_num': 2, 'shift': {'min': -0.15, 'max': 0.15},
-                    'noise_var': {'min': 0, 'max': 1.0}}
-    quantization_scheme = {'compand': False, 'mu': 10}
-
-
-    """
-
     url_speechcommand = "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz"
     url_librispeech = "http://us.openslr.org/resources/12/dev-clean.tar.gz"
     fs = 16000
 
-    class_dict = {
-        "FULL_LEAK": 0,
-        "MEDIUM_LEAK": 1,
-        "NORMAL": 2,
-        "SHUTTLE_ABN": 3,
-        "SHUTTLE_NORM": 4,
-    }
+    class_dict = {"LEAK": 0, "NORMAL": 1, "SHUTTLE_NORM": 2}
 
     def __init__(
         self,
@@ -817,8 +794,8 @@ datasets = [
     {
         "name": "SE",  # 2 keywords
         "input": (128, 128),
-        "output": ("FULL_LEAK", "MEDIUM_LEAK", "UNKNOWN"),
-        "weight": (1, 1, 0.6),
+        "output": ("LEAK", "NORMAL", "UNKNOWN"),
+        "weight": (1, 1, 0.9),
         "loader": SE_get_datasets,
     }
 ]
