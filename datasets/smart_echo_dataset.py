@@ -83,31 +83,46 @@ class KWS:
 
     """
 
-    url_speechcommand = 'http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz'
-    url_librispeech = 'http://us.openslr.org/resources/12/dev-clean.tar.gz'
+    url_speechcommand = "http://download.tensorflow.org/data/speech_commands_v0.02.tar.gz"
+    url_librispeech = "http://us.openslr.org/resources/12/dev-clean.tar.gz"
     fs = 16000
 
-    class_dict = {'FULL_LEAK': 0, 'MEDIUM_LEAK': 1, 'NORMAL': 2, 'SHUTTLE_ABN': 3, 'SHUTTLE_NORM': 4}
+    class_dict = {
+        "FULL_LEAK": 0,
+        "MEDIUM_LEAK": 1,
+        "NORMAL": 2,
+        "SHUTTLE_ABN": 3,
+        "SHUTTLE_NORM": 4,
+    }
 
-    def __init__(self, root, classes, d_type, t_type, transform=None, quantization_scheme=None,
-                 augmentation=None, download=False, save_unquantized=False, custom_dataset=False):
-
-        self.root = root   #./data
+    def __init__(
+        self,
+        root,
+        classes,
+        d_type,
+        t_type,
+        transform=None,
+        quantization_scheme=None,
+        augmentation=None,
+        download=False,
+        save_unquantized=False,
+        custom_dataset=False,
+    ):
+        self.root = root  # ./data
         self.classes = classes
         self.d_type = d_type
         self.t_type = t_type
         self.transform = transform
-        self.save_unquantized = save_unquantized   #dataset2.pt
+        self.save_unquantized = save_unquantized  # dataset2.pt
         self.noise = np.empty(shape=[0, 0])
-        
 
         self.__parse_quantization(quantization_scheme)
         self.__parse_augmentation(augmentation)
 
         if not self.save_unquantized:
-            self.data_file = 'dataset2.pt'
+            self.data_file = "dataset2.pt"
         else:
-            self.data_file = 'unquantized.pt'
+            self.data_file = "unquantized.pt"
 
         if download:
             self.__download()
@@ -115,98 +130,99 @@ class KWS:
         if custom_dataset:
             self._custom_dataset()
 
-        self.data, self.targets, self.data_type = torch.load(os.path.join(
-            self.processed_folder, self.data_file))
+        self.data, self.targets, self.data_type = torch.load(
+            os.path.join(self.processed_folder, self.data_file)
+        )
 
         # print("Targets: ",set(self.targets))
-        print(f'\nProcessing {self.d_type}...')
+        print(f"\nProcessing {self.d_type}...")
         self.__filter_dtype()
         self.__filter_classes()
 
     @property
     def raw_folder(self):
-        """Folder for the raw data.
-        """
-        return os.path.join(self.root, 'raw')
+        """Folder for the raw data."""
+        return os.path.join(self.root, "raw")
 
     @property
     def tempRaw_folder(self):
-        """Folder for the raw data.
-        """
-        return os.path.join(self.root, 'tempRaw')
+        """Folder for the raw data."""
+        return os.path.join(self.root, "tempRaw")
 
     @property
     def librispeech_folder(self):
-        """Folder for the librispeech data.
-        """
-        return os.path.join(self.root, self.__class__.__name__, 'librispeech')
+        """Folder for the librispeech data."""
+        return os.path.join(self.root, self.__class__.__name__, "librispeech")
 
     @property
     def noise_folder(self):
-        """Folder for the different noise data.
-        """
-        return os.path.join(self.root, self.__class__.__name__, 'noise')
+        """Folder for the different noise data."""
+        return os.path.join(self.root, self.__class__.__name__, "noise")
 
     @property
     def processed_folder(self):
-        """Folder for the processed data.
-        """
-        return os.path.join(self.root, 'processed')
+        """Folder for the processed data."""
+        return os.path.join(self.root, "processed")
 
     def __parse_quantization(self, quantization_scheme):
-        #quantization_scheme = {'compand': False, 'mu': 10, bits = 8}
+        # quantization_scheme = {'compand': False, 'mu': 10, bits = 8}
         if quantization_scheme:
             self.quantization = quantization_scheme
-            if 'bits' not in self.quantization: 
-                self.quantization['bits'] = 8 #quantization_scheme = {'compand': False, 'mu': 10, bits = 8}
-            if self.quantization['bits'] == 0:
+            if "bits" not in self.quantization:
+                self.quantization[
+                    "bits"
+                ] = 8  # quantization_scheme = {'compand': False, 'mu': 10, bits = 8}
+            if self.quantization["bits"] == 0:
                 self.save_unquantized = True
-            if 'compand' not in self.quantization:
-                self.quantization['compand'] = False
-            elif 'mu' not in self.quantization:
-                self.quantization['mu'] = 255
+            if "compand" not in self.quantization:
+                self.quantization["compand"] = False
+            elif "mu" not in self.quantization:
+                self.quantization["mu"] = 255
         else:
-            print('Undefined quantization schema! ',
-                  'Number of bits set to 8.')
-            self.quantization = {'bits': 8, 'compand': False}
+            print("Undefined quantization schema! ", "Number of bits set to 8.")
+            self.quantization = {"bits": 8, "compand": False}
 
     def __parse_augmentation(self, augmentation):
-        #augmentation = {'aug_num': 2, 'shift': {'min': -0.15, 'max': 0.15},
-                    # 'noise_var': {'min': 0, 'max': 1.0}, 'strech': {'min': 0.8, 'max': 1.3}}
+        # augmentation = {'aug_num': 2, 'shift': {'min': -0.15, 'max': 0.15},
+        # 'noise_var': {'min': 0, 'max': 1.0}, 'strech': {'min': 0.8, 'max': 1.3}}
         self.augmentation = augmentation
         if augmentation:
-            if 'aug_num' not in augmentation:
-                print('No key `aug_num` in input augmentation dictionary! ',
-                      'Using 0.')
-                self.augmentation['aug_num'] = 0
-            elif self.augmentation['aug_num'] != 0:
-                if 'noise_var' not in augmentation:
-                    print('No key `noise_var` in input augmentation dictionary! ',
-                          'Using defaults: [Min: 0., Max: 1.]')
-                    self.augmentation['noise_var'] = {'min': 0., 'max': 1.}
-                if 'shift' not in augmentation:
-                    print('No key `shift` in input augmentation dictionary! '
-                          'Using defaults: [Min:-0.1, Max: 0.1]')
-                    self.augmentation['shift'] = {'min': -0.1, 'max': 0.1}
-                if 'strech' not in augmentation:
-                    print('No key `strech` in input augmentation dictionary! '
-                          'Using defaults: [Min: 0.8, Max: 1.3]')
-                    self.augmentation['strech'] = {'min': 0.8, 'max': 1.3} #
-    
+            if "aug_num" not in augmentation:
+                print("No key `aug_num` in input augmentation dictionary! ", "Using 0.")
+                self.augmentation["aug_num"] = 0
+            elif self.augmentation["aug_num"] != 0:
+                if "noise_var" not in augmentation:
+                    print(
+                        "No key `noise_var` in input augmentation dictionary! ",
+                        "Using defaults: [Min: 0., Max: 1.]",
+                    )
+                    self.augmentation["noise_var"] = {"min": 0.0, "max": 1.0}
+                if "shift" not in augmentation:
+                    print(
+                        "No key `shift` in input augmentation dictionary! "
+                        "Using defaults: [Min:-0.1, Max: 0.1]"
+                    )
+                    self.augmentation["shift"] = {"min": -0.1, "max": 0.1}
+                if "strech" not in augmentation:
+                    print(
+                        "No key `strech` in input augmentation dictionary! "
+                        "Using defaults: [Min: 0.8, Max: 1.3]"
+                    )
+                    self.augmentation["strech"] = {"min": 0.8, "max": 1.3}  #
+
     def _custom_dataset(self):
         # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
-        
+
         if self.__check_exists():
-          return
+            return
         self.__resample_convert_wav_custom(folder_in=self.raw_folder)
         # self.__resample_convert_wav(folder_in=self.tempRaw_folder, folder_out=self.raw_folder)
         self.__gen_datasets()
 
-    def __resample_convert_wav_custom(self, folder_in, sr=16000, ext='.wav'):
-        
+    def __resample_convert_wav_custom(self, folder_in, sr=16000, ext=".wav"):
         # find total number of files to convert
         total_count = 0
-        for (dirpath, _, filenames) in os.walk(folder_in):
+        for dirpath, _, filenames in os.walk(folder_in):
             for filename in sorted(filenames):
                 if filename.endswith(ext):
                     total_count += 1
@@ -214,7 +230,7 @@ class KWS:
 
         converted_count = 0
         # segment each audio file to 1-sec frames and save
-        for (dirpath, _, filenames) in os.walk(folder_in):
+        for dirpath, _, filenames in os.walk(folder_in):
             for filename in sorted(filenames):
                 i = 0
                 if filename.endswith(ext):
@@ -236,18 +252,25 @@ class KWS:
                         if chunk_start + postcursor_len > len(data):
                             break
 
-                        chunk = data[chunk_start: chunk_start + 128]
+                        chunk = data[chunk_start : chunk_start + 128]
                         # scaled average over 128 samples
                         avg = 1000 * np.average(abs(chunk))
                         i += 128
 
                         if avg > utternace_threshold and chunk_start >= precursor_len:
-                            print(f"\r Converting {converted_count + 1}/{total_count} "
-                                f"to {frame_count + 1} segments", end=" ")
-                            frame = data[chunk_start - precursor_len:chunk_start + postcursor_len]
+                            print(
+                                f"\r Converting {converted_count + 1}/{total_count} "
+                                f"to {frame_count + 1} segments",
+                                end=" ",
+                            )
+                            frame = data[
+                                chunk_start - precursor_len : chunk_start + postcursor_len
+                            ]
 
                             # Using the directory path instead of a folder_out
-                            outfile = os.path.join(dirpath, filename[:-4] + f'_chunk{frame_count}.wav')
+                            outfile = os.path.join(
+                                dirpath, filename[:-4] + f"_chunk{frame_count}.wav"
+                            )
                             sf.write(outfile, frame, sr)
 
                             chunk_start += postcursor_len
@@ -257,32 +280,32 @@ class KWS:
                     # Deleting the original large .wav file
                     os.remove(fname)
                     converted_count += 1
-        print(f'\rFile conversion completed: {converted_count} files ')
+        print(f"\rFile conversion completed: {converted_count} files ")
 
     def __download(self):
-
         if self.__check_exists():
             return
 
-        self.__makedir_exist_ok(self.raw_folder) #data/raw
-        self.__makedir_exist_ok(self.processed_folder) #data/processed
+        self.__makedir_exist_ok(self.raw_folder)  # data/raw
+        self.__makedir_exist_ok(self.processed_folder)  # data/processed
 
-        
         # download Speech Command
-        filename = self.url_speechcommand.rpartition('/')[2]
-        self.__download_and_extract_archive(self.url_speechcommand,
-                                            download_root=self.raw_folder,
-                                            filename=filename)
+        filename = self.url_speechcommand.rpartition("/")[2]
+        self.__download_and_extract_archive(
+            self.url_speechcommand, download_root=self.raw_folder, filename=filename
+        )
 
         # download LibriSpeech
-        filename = self.url_librispeech.rpartition('/')[2]
-        self.__download_and_extract_archive(self.url_librispeech,
-                                            download_root=self.librispeech_folder,
-                                            filename=filename)
+        filename = self.url_librispeech.rpartition("/")[2]
+        self.__download_and_extract_archive(
+            self.url_librispeech, download_root=self.librispeech_folder, filename=filename
+        )
 
         # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
-        self.__resample_convert_wav(folder_in=self.librispeech_folder,
-                                    folder_out=os.path.join(self.raw_folder, 'librispeech'))
+        self.__resample_convert_wav(
+            folder_in=self.librispeech_folder,
+            folder_out=os.path.join(self.raw_folder, "librispeech"),
+        )
 
         self.__gen_datasets()
 
@@ -319,24 +342,26 @@ class KWS:
 
         # downloads file
         if self.__check_integrity(fpath, md5):
-            print('Using downloaded and verified file: ' + fpath)
+            print("Using downloaded and verified file: " + fpath)
         else:
             try:
-                print('Downloading ' + url + ' to ' + fpath)
+                print("Downloading " + url + " to " + fpath)
                 urllib.request.urlretrieve(url, fpath, reporthook=self.__gen_bar_updater())
             except (urllib.error.URLError, IOError) as e:
-                if url[:5] == 'https':
-                    url = url.replace('https:', 'http:')
-                    print('Failed download. Trying https -> http instead.'
-                          ' Downloading ' + url + ' to ' + fpath)
+                if url[:5] == "https":
+                    url = url.replace("https:", "http:")
+                    print(
+                        "Failed download. Trying https -> http instead."
+                        " Downloading " + url + " to " + fpath
+                    )
                     urllib.request.urlretrieve(url, fpath, reporthook=self.__gen_bar_updater())
                 else:
                     raise e
 
     def __calculate_md5(self, fpath, chunk_size=1024 * 1024):
         md5 = hashlib.md5()
-        with open(fpath, 'rb') as f:
-            for chunk in iter(lambda: f.read(chunk_size), b''):
+        with open(fpath, "rb") as f:
+            for chunk in iter(lambda: f.read(chunk_size), b""):
                 md5.update(chunk)
         return md5.hexdigest()
 
@@ -350,15 +375,14 @@ class KWS:
             return True
         return self.__check_md5(fpath, md5)
 
-    def __extract_archive(self, from_path,
-                          to_path=None, remove_finished=False):
+    def __extract_archive(self, from_path, to_path=None, remove_finished=False):
         if to_path is None:
             to_path = os.path.dirname(from_path)
 
-        if from_path.endswith('.tar.gz'):
-            with tarfile.open(from_path, 'r:gz') as tar:
+        if from_path.endswith(".tar.gz"):
+            with tarfile.open(from_path, "r:gz") as tar:
                 tar.extractall(path=to_path)
-        elif from_path.endswith('.zip'):
+        elif from_path.endswith(".zip"):
             with ZipFile(from_path) as archive:
                 archive.extractall(to_path)
         else:
@@ -367,8 +391,9 @@ class KWS:
         if remove_finished:
             os.remove(from_path)
 
-    def __download_and_extract_archive(self, url, download_root, extract_root=None, filename=None,
-                                       md5=None, remove_finished=False):
+    def __download_and_extract_archive(
+        self, url, download_root, extract_root=None, filename=None, md5=None, remove_finished=False
+    ):
         download_root = os.path.expanduser(download_root)
         if extract_root is None:
             extract_root = download_root
@@ -381,8 +406,7 @@ class KWS:
         print(f"Extracting {archive} to {extract_root}")
         self.__extract_archive(archive, extract_root, remove_finished)
 
-    def __resample_convert_wav(self, folder_in, folder_out, sr=16000, ext='.wav'):
-
+    def __resample_convert_wav(self, folder_in, folder_out, sr=16000, ext=".wav"):
         # # convert the LibriSpeech audio files to 1-sec 16KHz .wav, stored under raw/librispeech
         # self.__resample_convert_wav(folder_in=self.librispeech_folder,
         #                             folder_out=os.path.join(self.raw_folder, 'librispeech'))
@@ -392,16 +416,15 @@ class KWS:
 
         # find total number of files to convert
         total_count = 0
-        for (dirpath, _, filenames) in os.walk(folder_in):
+        for dirpath, _, filenames in os.walk(folder_in):
             for filename in sorted(filenames):
                 if filename.endswith(ext):
                     total_count += 1
         print(f"Total number of speech files to convert to 1-sec .wav: {total_count}")
         converted_count = 0
         # segment each audio file to 1-sec frames and save
-        for (dirpath, _, filenames) in os.walk(folder_in):
+        for dirpath, _, filenames in os.walk(folder_in):
             for filename in sorted(filenames):
-
                 i = 0
                 if filename.endswith(ext):
                     fname = os.path.join(dirpath, filename)
@@ -430,18 +453,24 @@ class KWS:
                         if chunk_start + postcursor_len > len(data):
                             break
 
-                        chunk = data[chunk_start: chunk_start + 128]
+                        chunk = data[chunk_start : chunk_start + 128]
                         # scaled average over 128 samples
                         avg = 1000 * np.average(abs(chunk))
                         i += 128
 
                         if avg > utternace_threshold and chunk_start >= precursor_len:
-                            print(f"\r Converting {converted_count + 1}/{total_count} "
-                                  f"to {frame_count + 1} segments", end=" ")
-                            frame = data[chunk_start - precursor_len:chunk_start + postcursor_len]
+                            print(
+                                f"\r Converting {converted_count + 1}/{total_count} "
+                                f"to {frame_count + 1} segments",
+                                end=" ",
+                            )
+                            frame = data[
+                                chunk_start - precursor_len : chunk_start + postcursor_len
+                            ]
 
-                            outfile = os.path.join(folder_out, filename[:-5] + '_' +
-                                                   str(f"{frame_count}") + '.wav')
+                            outfile = os.path.join(
+                                folder_out, filename[:-5] + "_" + str(f"{frame_count}") + ".wav"
+                            )
                             sf.write(outfile, frame, sr)
 
                             chunk_start += postcursor_len
@@ -451,15 +480,15 @@ class KWS:
                     converted_count += 1
                 else:
                     pass
-        print(f'\rFile conversion completed: {converted_count} files ')
+        print(f"\rFile conversion completed: {converted_count} files ")
 
     def __filter_dtype(self):
-        if self.d_type == 'train':
+        if self.d_type == "train":
             idx_to_select = (self.data_type == 0)[:, -1]
-        elif self.d_type == 'test':
+        elif self.d_type == "test":
             idx_to_select = (self.data_type == 1)[:, -1]
         else:
-            print(f'Unknown data type: {self.d_type}')
+            print(f"Unknown data type: {self.d_type}")
             return
 
         self.data = self.data[idx_to_select, :]
@@ -467,20 +496,19 @@ class KWS:
         del self.data_type
 
     def __filter_classes(self):
-        initial_new_class_label = len(self.class_dict) #5
+        initial_new_class_label = len(self.class_dict)  # 5
         new_class_label = initial_new_class_label
-        for c in self.classes: 
+        for c in self.classes:
             if c not in self.class_dict:
-                print(f'Class {c} not found in data')
+                print(f"Class {c} not found in data")
                 return
             num_elems = (self.targets == self.class_dict[c]).cpu().sum()
-            print(f'Class {c} (# {self.class_dict[c]}): {num_elems} elements')
+            print(f"Class {c} (# {self.class_dict[c]}): {num_elems} elements")
             self.targets[(self.targets == self.class_dict[c])] = new_class_label
             new_class_label += 1
 
-        print("Jession")
         num_elems = (self.targets < initial_new_class_label).cpu().sum()
-        print(f'Class UNKNOWN: {num_elems} elements')
+        print(f"Class UNKNOWN: {num_elems} elements")
         self.targets[(self.targets < initial_new_class_label)] = new_class_label
         self.targets -= initial_new_class_label
 
@@ -497,23 +525,20 @@ class KWS:
 
     @staticmethod
     def add_white_noise(audio, noise_var_coeff):
-        """Adds zero mean Gaussian noise to image with specified variance.
-        """
+        """Adds zero mean Gaussian noise to image with specified variance."""
         coeff = noise_var_coeff * np.mean(np.abs(audio))
         noisy_audio = audio + coeff * np.random.randn(len(audio))
         return noisy_audio
 
     @staticmethod
     def shift(audio, shift_sec, fs):
-        """Shifts audio.
-        """
+        """Shifts audio."""
         shift_count = int(shift_sec * fs)
         return np.roll(audio, shift_count)
 
     @staticmethod
     def stretch(audio, rate=1):
-        """Stretches audio with specified ratio.
-        """
+        """Stretches audio with specified ratio."""
         input_length = 16000
         audio2 = librosa.effects.time_stretch(audio, rate)
         if len(audio2) > input_length:
@@ -524,22 +549,26 @@ class KWS:
         return audio2
 
     def augment(self, audio, fs, verbose=False):
-        """Augments audio by adding random noise, shift and stretch ratio.
-        """
-        random_noise_var_coeff = np.random.uniform(self.augmentation['noise_var']['min'],
-                                                   self.augmentation['noise_var']['max'])
-        random_shift_time = np.random.uniform(self.augmentation['shift']['min'],
-                                              self.augmentation['shift']['max'])
-        random_strech_coeff = np.random.uniform(self.augmentation['strech']['min'],
-                                                self.augmentation['strech']['max'])
+        """Augments audio by adding random noise, shift and stretch ratio."""
+        random_noise_var_coeff = np.random.uniform(
+            self.augmentation["noise_var"]["min"], self.augmentation["noise_var"]["max"]
+        )
+        random_shift_time = np.random.uniform(
+            self.augmentation["shift"]["min"], self.augmentation["shift"]["max"]
+        )
+        random_strech_coeff = np.random.uniform(
+            self.augmentation["strech"]["min"], self.augmentation["strech"]["max"]
+        )
 
         aug_audio = tsm.wsola(audio, random_strech_coeff)
         aug_audio = self.shift(aug_audio, random_shift_time, fs)
         aug_audio = self.add_white_noise(aug_audio, random_noise_var_coeff)
 
         if verbose:
-            print(f'random_noise_var_coeff: {random_noise_var_coeff:.2f}\nrandom_shift_time: \
-                    {random_shift_time:.2f}\nrandom_strech_coeff: {random_strech_coeff:.2f}')
+            print(
+                f"random_noise_var_coeff: {random_noise_var_coeff:.2f}\nrandom_shift_time: \
+                    {random_shift_time:.2f}\nrandom_strech_coeff: {random_strech_coeff:.2f}"
+            )
         return aug_audio
 
     def augment_multiple(self, audio, fs, n_augment, verbose=False):
@@ -564,8 +593,7 @@ class KWS:
 
     @staticmethod
     def quantize_audio(data, num_bits=8, compand=False, mu=255):
-        """Quantize audio
-        """
+        """Quantize audio"""
         if compand:
             data = KWS.compand(data, mu)
 
@@ -582,55 +610,62 @@ class KWS:
         return np.uint8(q_data)
 
     def __gen_datasets(self, exp_len=16384, row_len=128, overlap_ratio=0):
-        print('Generating dataset from raw data samples for the first time. ')
-        print('This process will take significant time (~60 minutes)...')
-       
+        print("Generating dataset from raw data samples for the first time. ")
+        print("This process will take significant time (~60 minutes)...")
+
         with warnings.catch_warnings():
-            warnings.simplefilter('error')
+            warnings.simplefilter("error")
 
-            lst = sorted(os.listdir(self.raw_folder)) #data/raw
-            labels = [d for d in lst if os.path.isdir(os.path.join(self.raw_folder, d))
-                      and d[0].isalpha()] # # Output: ['folderA', 'folderB', 'folderC']
-
-
+            lst = sorted(os.listdir(self.raw_folder))  # data/raw
+            labels = [
+                d
+                for d in lst
+                if os.path.isdir(os.path.join(self.raw_folder, d)) and d[0].isalpha()
+            ]  # # Output: ['folderA', 'folderB', 'folderC']
 
             # PARAMETERS
-            overlap = int(np.ceil(row_len * overlap_ratio)) #0
-            num_rows = int(np.ceil(exp_len / (row_len - overlap))) #128
+            overlap = int(np.ceil(row_len * overlap_ratio))  # 0
+            num_rows = int(np.ceil(exp_len / (row_len - overlap)))  # 128
             data_len = int((num_rows * row_len - (num_rows - 1) * overlap))
-            print(f'data_len: {data_len}')
+            print(f"data_len: {data_len}")
 
             # show the size of dataset for each keyword
-            print('------------- Label Size ---------------')
+            print("------------- Label Size ---------------")
             for i, label in enumerate(labels):
                 record_list = os.listdir(os.path.join(self.raw_folder, label))
-                print(f'{label:8s}:  \t{len(record_list)}')
-            print('------------------------------------------')
+                print(f"{label:8s}:  \t{len(record_list)}")
+            print("------------------------------------------")
 
-            for i, label in enumerate(labels): #label = folder
-                print(f'Processing the label: {label}. {i + 1} of {len(labels)}')
-                record_list = sorted(os.listdir(os.path.join(self.raw_folder, label))) #
-                #record_list = ['file1.wav', 'file2.wav'] for each folder
+            for i, label in enumerate(labels):  # label = folder
+                print(f"Processing the label: {label}. {i + 1} of {len(labels)}")
+                record_list = sorted(os.listdir(os.path.join(self.raw_folder, label)))  #
+                # record_list = ['file1.wav', 'file2.wav'] for each folder
 
                 # dimension: row_length x number_of_rows
-                if not self.save_unquantized: #save_unquantized = False 
-                    data_in = np.empty(((self.augmentation['aug_num'] + 1) * len(record_list),
-                                        row_len, num_rows), dtype=np.uint8) #self.augmentation['aug_num'] = 2
+                if not self.save_unquantized:  # save_unquantized = False
+                    data_in = np.empty(
+                        ((self.augmentation["aug_num"] + 1) * len(record_list), row_len, num_rows),
+                        dtype=np.uint8,
+                    )  # self.augmentation['aug_num'] = 2
                 else:
-                    data_in = np.empty(((self.augmentation['aug_num'] + 1) * len(record_list),
-                                        row_len, num_rows), dtype=np.float32)
-                data_type = np.empty(((self.augmentation['aug_num'] + 1) * len(record_list), 1),
-                                     dtype=np.uint8)
+                    data_in = np.empty(
+                        ((self.augmentation["aug_num"] + 1) * len(record_list), row_len, num_rows),
+                        dtype=np.float32,
+                    )
+                data_type = np.empty(
+                    ((self.augmentation["aug_num"] + 1) * len(record_list), 1), dtype=np.uint8
+                )
                 # create data classes
-                data_class = np.full(((self.augmentation['aug_num'] + 1) * len(record_list), 1), i,
-                                     dtype=np.uint8)
+                data_class = np.full(
+                    ((self.augmentation["aug_num"] + 1) * len(record_list), 1), i, dtype=np.uint8
+                )
 
                 time_s = time.time()
                 train_count = 0
                 test_count = 0
                 for r, record_name in enumerate(record_list):
                     if r % 1000 == 0:
-                        print(f'\t{r + 1} of {len(record_list)}')
+                        print(f"\t{r + 1} of {len(record_list)}")
 
                     if hash(record_name) % 10 < 9:
                         d_typ = np.uint8(0)  # train+val
@@ -641,11 +676,12 @@ class KWS:
 
                     record_pth = os.path.join(self.raw_folder, label, record_name)
                     record, fs = librosa.load(record_pth, offset=0, sr=None)
-                    audio_seq_list = self.augment_multiple(record, fs,
-                                                           self.augmentation['aug_num'])
+                    audio_seq_list = self.augment_multiple(
+                        record, fs, self.augmentation["aug_num"]
+                    )
                     for n_a, audio_seq in enumerate(audio_seq_list):
                         # store set type: train+validate or test
-                        data_type[(self.augmentation['aug_num'] + 1) * r + n_a, 0] = d_typ
+                        data_type[(self.augmentation["aug_num"] + 1) * r + n_a, 0] = d_typ
 
                         # Write audio 128x128=16384 samples without overlap
                         for n_r in range(num_rows):
@@ -655,18 +691,19 @@ class KWS:
                             # pad zero if the length of the chunk is smaller than row_len
                             audio_chunk = np.pad(audio_chunk, [0, row_len - audio_chunk.size])
                             # store input data after quantization
-                            data_idx = (self.augmentation['aug_num'] + 1) * r + n_a
+                            data_idx = (self.augmentation["aug_num"] + 1) * r + n_a
                             if not self.save_unquantized:
-                                data_in[data_idx, :, n_r] = \
-                                    KWS.quantize_audio(audio_chunk,
-                                                       num_bits=self.quantization['bits'],
-                                                       compand=self.quantization['compand'],
-                                                       mu=self.quantization['mu'])
+                                data_in[data_idx, :, n_r] = KWS.quantize_audio(
+                                    audio_chunk,
+                                    num_bits=self.quantization["bits"],
+                                    compand=self.quantization["compand"],
+                                    mu=self.quantization["mu"],
+                                )
                             else:
                                 data_in[data_idx, :, n_r] = audio_chunk
 
                 dur = time.time() - time_s
-                print(f'Finished in {dur:.3f} seconds.')
+                print(f"Finished in {dur:.3f} seconds.")
                 print(data_in.shape)
                 time_s = time.time()
                 if i == 0:
@@ -678,7 +715,7 @@ class KWS:
                     data_class_all = np.concatenate((data_class_all, data_class), axis=0)
                     data_type_all = np.concatenate((data_type_all, data_type), axis=0)
                 dur = time.time() - time_s
-                print(f'Data concatenation finished in {dur:.3f} seconds.')
+                print(f"Data concatenation finished in {dur:.3f} seconds.")
 
             data_in_all = torch.from_numpy(data_in_all)
             data_class_all = torch.from_numpy(data_class_all)
@@ -687,8 +724,8 @@ class KWS:
             mfcc_dataset = (data_in_all, data_class_all, data_type_all)
             torch.save(mfcc_dataset, os.path.join(self.processed_folder, self.data_file))
 
-        print('Dataset created.')
-        print(f'Training+Validation: {train_count},  Test: {test_count}')
+        print("Dataset created.")
+        print(f"Training+Validation: {train_count},  Test: {test_count}")
 
 
 class KWS_20(KWS):
@@ -701,9 +738,10 @@ class KWS_20(KWS):
         return self.__class__.__name__
 
 
-
-def SE_get_datasets(data, load_train=True, load_test=True, num_classes=2): #train_dataset, test_dataset = datasets_fn(data_dir, load_train=not test_only, load_test=True)
-    #Load_train = True and Load_test = True
+def SE_get_datasets(
+    data, load_train=True, load_test=True, num_classes=2
+):  # train_dataset, test_dataset = datasets_fn(data_dir, load_train=not test_only, load_test=True)
+    # Load_train = True and Load_test = True
     """
     Load the folded 1D version of SpeechCom dataset
 
@@ -721,37 +759,51 @@ def SE_get_datasets(data, load_train=True, load_test=True, num_classes=2): #trai
     the stretching coefficient, shift amount and noise variance are randomly selected between
     0.8 and 1.3, -0.1 and 0.1, 0 and 1, respectively.
     """
-    (data_dir, args) = data #(data directory, args)
+    (data_dir, args) = data  # (data directory, args)
 
-    transform = transforms.Compose([
-        ai8x.normalize(args=args)
-    ])
+    transform = transforms.Compose([ai8x.normalize(args=args)])
 
     if num_classes in (2, 20):
-        classes = next((e for _, e in enumerate(datasets)
-                        if len(e['output']) - 1 == num_classes))['output'][:-1]
+        classes = next((e for _, e in enumerate(datasets) if len(e["output"]) - 1 == num_classes))[
+            "output"
+        ][:-1]
     else:
-        raise ValueError(f'Unsupported num_classes {num_classes}')
-    
-             
+        raise ValueError(f"Unsupported num_classes {num_classes}")
 
-    augmentation = {'aug_num': 2, 'shift': {'min': -0.15, 'max': 0.15},
-                    'noise_var': {'min': 0, 'max': 1.0}}
-    quantization_scheme = {'compand': False, 'mu': 10}
+    augmentation = {
+        "aug_num": 2,
+        "shift": {"min": -0.15, "max": 0.15},
+        "noise_var": {"min": 0, "max": 1.0},
+    }
+    quantization_scheme = {"compand": False, "mu": 10}
 
     if load_train:
-        train_dataset = KWS(root=data_dir, classes=classes, d_type='train',
-                            transform=transform, t_type='keyword',
-                            quantization_scheme=quantization_scheme,
-                            augmentation=augmentation, download=False, custom_dataset=True)
+        train_dataset = KWS(
+            root=data_dir,
+            classes=classes,
+            d_type="train",
+            transform=transform,
+            t_type="keyword",
+            quantization_scheme=quantization_scheme,
+            augmentation=augmentation,
+            download=False,
+            custom_dataset=True,
+        )
     else:
         train_dataset = None
 
     if load_test:
-        test_dataset = KWS(root=data_dir, classes=classes, d_type='test',
-                           transform=transform, t_type='keyword',
-                           quantization_scheme=quantization_scheme,
-                           augmentation=augmentation, download=False, custom_dataset=True)
+        test_dataset = KWS(
+            root=data_dir,
+            classes=classes,
+            d_type="test",
+            transform=transform,
+            t_type="keyword",
+            quantization_scheme=quantization_scheme,
+            augmentation=augmentation,
+            download=False,
+            custom_dataset=True,
+        )
 
         if args.truncate_testset:
             test_dataset.data = test_dataset.data[:1]
@@ -761,14 +813,12 @@ def SE_get_datasets(data, load_train=True, load_test=True, num_classes=2): #trai
     return train_dataset, test_dataset
 
 
-
-
 datasets = [
     {
-        'name': 'SE',  # 2 keywords
-        'input': (128, 128),
-        'output': ('FULL_LEAK', 'MEDIUM_LEAK', 'UNKNOWN'),
-        'weight': (1, 1, 0.6),
-        'loader': SE_get_datasets,
-    }    
+        "name": "SE",  # 2 keywords
+        "input": (128, 128),
+        "output": ("FULL_LEAK", "MEDIUM_LEAK", "UNKNOWN"),
+        "weight": (1, 1, 0.6),
+        "loader": SE_get_datasets,
+    }
 ]
